@@ -1,118 +1,141 @@
-import Image from "next/image";
 import { Inter } from "next/font/google";
+import useAxios from "@/hooks/useAxios";
+import { END_POINT } from "@/constants/endpoint";
+import { useEffect, useState } from "react";
+import useAuth from "@/hooks/useAuth";
+import useNotification from "@/hooks/useNotification";
+import NoneAvatar from "@/assets/avatar.png";
+import Image from "next/image";
+import { Button, Form, Input, Upload } from "antd";
+import { EditOutlined, UploadOutlined } from "@ant-design/icons";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
+  const { accessToken } = useAuth();
+  const { contextHolder, openNotification } = useNotification();
+  const { getData, mutateData } = useAxios();
+  const [user, setUser] = useState<UserType | null>(null);
+
+  const [isEditAvatar, setIsEditAvatar] = useState(false);
+  const [isEditName, setIsEditName] = useState(false);
+
+  const getUserData = async () => {
+    try {
+      const data = await getData(END_POINT.USER.PROFILE);
+      if (data?.success) {
+        setUser(data?.data?.item);
+      }
+    } catch (error: any) {
+      openNotification("error", error?.message);
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken) getUserData();
+  }, [accessToken]);
+
+  const handleCancelEdit = () => {
+    setIsEditAvatar(false);
+    setIsEditName(false);
+  };
+
+  const onFinishEditAvatar = async (values: any) => {
+    try {
+      const formData = new FormData();
+      formData.append("avatar", values?.avatar?.file?.originFileObj);
+      const data = await mutateData(
+        END_POINT.USER.PROFILE,
+        formData,
+        "put",
+        true
+      );
+      setUser(data?.data?.item);
+      setIsEditAvatar(false);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const onFinishEditName = (values: any) => {
+    console.log(values.fullName);
+  };
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="p-12" onClick={handleCancelEdit}>
+      <h2 className="mb-5">Xin chào {user?.username}</h2>
+
+      <Form onFinish={onFinishEditAvatar}>
+        <div className="flex items-center mb-3">
+          {isEditAvatar ? (
+            <Form.Item name={"avatar"}>
+              <Upload multiple={false}>
+                <Button icon={<UploadOutlined />}>Click to Upload</Button>
+              </Upload>
+            </Form.Item>
+          ) : (
+            <div className="w-[150px] h-[150px] rounded-full overflow-hidden bg-slate-300">
+              {user?.avatar ? (
+                <img
+                  src={user?.avatar}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={NoneAvatar}
+                  alt="ba"
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+          )}
+          <div>
+            <Button
+              type="link"
+              htmlType={isEditAvatar ? "submit" : "button"}
+              icon={<EditOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditAvatar(true);
+              }}
+            >
+              {isEditAvatar ? "Lưu" : "Chỉnh sửa"}
+            </Button>
+          </div>
+        </div>
+      </Form>
+      <div className="flex gap-2 items-center">
+        <span className="text-lg">Tên: </span>
+        <div className="font-semibold text-2xl">
+          <Form
+            onFinish={onFinishEditName}
+            onClick={(e) => e.stopPropagation()}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <div className="flex items-center gap-2">
+              {isEditName ? (
+                <Form.Item name="fullName">
+                  <Input defaultValue={user?.fullName} />
+                </Form.Item>
+              ) : (
+                <div className="text-2xl font-semibold">
+                  {user?.fullName || "Bạn chưa có tên"}
+                </div>
+              )}
+              <Button
+                type="link"
+                htmlType={isEditName ? "submit" : "button"}
+                icon={<EditOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditName(true);
+                }}
+              >
+                {isEditName ? "Lưu" : "Chỉnh sửa"}
+              </Button>
+            </div>
+          </Form>
         </div>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }
